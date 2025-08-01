@@ -25,14 +25,22 @@ func NewApp(monitor *clipboard.Monitor) *App {
 // Run starts the UI application
 func (a *App) Run() {
 	menuet.App().Name = "Cliper"
-	menuet.App().Label = "📋"
+	menuet.App().Label = "CL" // 必须设置Label属性，这是应用程序在状态栏显示的标识
+	menuet.App().SetMenuState(&menuet.MenuState{
+		Title: "📎",
+	})
 	menuet.App().Children = a.menuItems
-	menuet.App().AutoUpdate.Version = "1.0.0"
-	menuet.App().AutoUpdate.Repo = "lilithgames/cliper"
+	// Disable auto-update to prevent JSON parsing errors
+	// menuet.App().AutoUpdate.Version = "1.0.0"
+	// menuet.App().AutoUpdate.Repo = "lilithgames/cliper"
 
 	// Setup timed refresh of menu items (every second)
+	// 使用更稳定的刷新机制，防止应用从状态栏消失
 	go func() {
 		for {
+			menuet.App().SetMenuState(&menuet.MenuState{
+				Title: "📎",
+			})
 			menuet.App().MenuChanged()
 			time.Sleep(1 * time.Second)
 		}
@@ -98,9 +106,26 @@ func (a *App) menuItems() []menuet.MenuItem {
 		Type: menuet.Separator,
 	})
 
+	// 添加关于选项
+	items = append(items, menuet.MenuItem{
+		Text: "关于Cliper",
+		Clicked: func() {
+			// 显示关于对话框
+			menuet.App().Alert(menuet.Alert{
+				MessageText:     "关于Cliper",
+				InformativeText: "Cliper - 轻量级剪贴板历史工具\n\nhttps://github.com/lilithgames/cliper",
+			})
+		},
+	})
+
+	// 分隔线
+	items = append(items, menuet.MenuItem{
+		Type: menuet.Separator,
+	})
+
 	// Add quit button
 	items = append(items, menuet.MenuItem{
-		Text: "Quit",
+		Text: "退出",
 		Clicked: func() {
 			// Use standard Go way to exit the application
 			os.Exit(0)
