@@ -113,7 +113,7 @@ func (a *App) menuItems() []menuet.MenuItem {
 			// 显示关于对话框
 			menuet.App().Alert(menuet.Alert{
 				MessageText:     "关于Cliper",
-				InformativeText: "Cliper - 轻量级剪贴板历史工具\n\nhttps://github.com/lilithgames/cliper",
+				InformativeText: "Cliper - 轻量级剪贴板历史工具\n\nhttps://github.com/aredddd/cliper/blob/main/internal/ui/app.go",
 			})
 		},
 	})
