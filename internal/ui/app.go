@@ -80,14 +80,21 @@ func (a *App) menuItems() []menuet.MenuItem {
 				break
 			}
 
-			// Truncate content if too long
+			// 处理剪贴板内容以显示在菜单中
 			displayText := item.Content
-			if len(displayText) > 60 {
-				displayText = displayText[:57] + "..."
-			}
 
-			// Replace newlines with spaces for display
+			// 替换换行符为空格
 			displayText = strings.ReplaceAll(displayText, "\n", " ")
+
+			// 使用Unicode感知的方式截断文本
+			runeCount := 0
+			for i := range displayText {
+				runeCount++
+				if runeCount > 40 { // 限制字符数而不是字节数
+					displayText = displayText[:i] + "..."
+					break
+				}
+			}
 
 			// Format timestamp
 			timeAgo := formatTimeAgo(item.Timestamp)
@@ -113,7 +120,7 @@ func (a *App) menuItems() []menuet.MenuItem {
 			// 显示关于对话框
 			menuet.App().Alert(menuet.Alert{
 				MessageText:     "关于Cliper",
-				InformativeText: "Cliper - 轻量级剪贴板历史工具\n\nhttps://github.com/lilithgames/cliper",
+				InformativeText: "Cliper - 轻量级剪贴板历史工具\n\nhttps://github.com/aredddd/cliper/",
 			})
 		},
 	})
