@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -15,6 +16,20 @@ type App struct {
 	monitor *clipboard.Monitor
 }
 
+type popupItem struct {
+	Text      string `json:"text,omitempty"`
+	Index     int    `json:"index,omitempty"`
+	Enabled   bool   `json:"enabled,omitempty"`
+	Separator bool   `json:"separator,omitempty"`
+}
+
+type historyMenuItem struct {
+	Content string
+	Text    string
+}
+
+var activeApp *App
+
 // NewApp creates a new UI application
 func NewApp(monitor *clipboard.Monitor) *App {
 	return &App{
@@ -24,12 +39,14 @@ func NewApp(monitor *clipboard.Monitor) *App {
 
 // Run starts the UI application
 func (a *App) Run() {
+	activeApp = a
 	menuet.App().Name = "Cliper"
 	menuet.App().Label = "CL" // 必须设置Label属性，这是应用程序在状态栏显示的标识
 	menuet.App().SetMenuState(&menuet.MenuState{
 		Title: "📎",
 	})
 	menuet.App().Children = a.menuItems
+	startHotkey(a)
 	// Disable auto-update to prevent JSON parsing errors
 	// menuet.App().AutoUpdate.Version = "1.0.0"
 	// menuet.App().AutoUpdate.Repo = "lilithgames/cliper"
@@ -73,36 +90,9 @@ func (a *App) menuItems() []menuet.MenuItem {
 			Text: "No clipboard history yet",
 		})
 	} else {
-		// Add history items
-		for i, item := range history {
-			// Limit to 20 items in the menu for performance
-			if i >= 20 {
-				break
-			}
-
-			// 处理剪贴板内容以显示在菜单中
-			displayText := item.Content
-
-			// 替换换行符为空格
-			displayText = strings.ReplaceAll(displayText, "\n", " ")
-
-			// 使用Unicode感知的方式截断文本
-			runeCount := 0
-			for i := range displayText {
-				runeCount++
-				if runeCount > 40 { // 限制字符数而不是字节数
-					displayText = displayText[:i] + "..."
-					break
-				}
-			}
-
-			// Format timestamp
-			timeAgo := formatTimeAgo(item.Timestamp)
-
-			// Create menu item with timestamp in the menu text
-			menuText := fmt.Sprintf("%s (%s)", displayText, timeAgo)
+		for _, item := range buildHistoryMenuItems(history) {
 			items = append(items, menuet.MenuItem{
-				Text:    menuText,
+				Text:    item.Text,
 				Clicked: a.createClickHandler(item.Content),
 			})
 		}
@@ -147,6 +137,74 @@ func (a *App) createClickHandler(content string) func() {
 	return func() {
 		a.monitor.CopyToClipboard(content)
 	}
+}
+
+func (a *App) popupItemsJSON() string {
+	items := []popupItem{{Text: "Cliper - Clipboard History"}}
+	historyItems := buildHistoryMenuItems(a.monitor.GetHistory())
+
+	if len(historyItems) == 0 {
+		items = append(items, popupItem{Text: "No clipboard history yet"})
+	} else {
+		items = append(items, popupItem{Separator: true})
+		for i, item := range historyItems {
+			items = append(items, popupItem{
+				Text:    item.Text,
+				Index:   i,
+				Enabled: true,
+			})
+		}
+	}
+
+	data, err := json.Marshal(items)
+	if err != nil {
+		return "[]"
+	}
+	return string(data)
+}
+
+func (a *App) copyHistoryItem(index int) {
+	items := buildHistoryMenuItems(a.monitor.GetHistory())
+	if index < 0 || index >= len(items) {
+		return
+	}
+	_ = a.monitor.CopyToClipboard(items[index].Content)
+}
+
+func (a *App) pasteHistoryItem(index int) {
+	a.copyHistoryItem(index)
+	pasteFromHotkeyMenu()
+}
+
+func buildHistoryMenuItems(history []clipboard.ClipItem) []historyMenuItem {
+	limit := len(history)
+	if limit > 20 {
+		limit = 20
+	}
+
+	items := make([]historyMenuItem, 0, limit)
+	for i := 0; i < limit; i++ {
+		item := history[i]
+		menuText := fmt.Sprintf("%s (%s)", formatDisplayText(item.Content), formatTimeAgo(item.Timestamp))
+		items = append(items, historyMenuItem{
+			Content: item.Content,
+			Text:    menuText,
+		})
+	}
+	return items
+}
+
+func formatDisplayText(content string) string {
+	displayText := strings.ReplaceAll(content, "\n", " ")
+
+	runeCount := 0
+	for i := range displayText {
+		runeCount++
+		if runeCount > 40 {
+			return displayText[:i] + "..."
+		}
+	}
+	return displayText
 }
 
 // formatTimeAgo formats a timestamp as a human-readable time ago string
