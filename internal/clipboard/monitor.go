@@ -33,7 +33,7 @@ func NewMonitor() *Monitor {
 // Start begins monitoring the clipboard for changes
 func (m *Monitor) Start() {
 	for {
-		content, err := clipboard.ReadAll()
+		content, err := readClipboardText()
 		// 确保内容是有效的UTF-8
 		if err == nil && content != "" && content != m.lastContent {
 			// 确保内容是有效的UTF-8字符串
